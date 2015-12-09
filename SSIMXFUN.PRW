@@ -20,6 +20,7 @@ User function RetT(dDataIni, cHoraIni, dDataFim, cHoraFim)
 
 Local nMinutos := 0
 Local nQtdDias := 0
+Local nI := 1
 
 Private cIniExp 	:= "08:00:00"
 Private cIniPausa 	:= "12:00:00"
@@ -28,36 +29,41 @@ Private cFimExp		:= "18:00:00"
 
 If dDataIni == dDataFim
 	
-	// Verifica se a interação foi realizada no horário do intervalo
-	If (cHoraIni <=  "12:00:00" .And. cHoraFim <= "12:00:00") .Or. (cHoraIni >= "13:30:00" .And. cHoraFim >= "13:30:00") 
+	// Verifica se as duas interações foram realizadas no mesmo período (antes ou depois do descanso)
+	If (cHoraIni <=  cIniPausa .And. cHoraFim <= cIniPausa) .Or. (cHoraIni >= cFimPausa .And. cHoraFim >= cFimPausa) 
 		nMinutos := U_HoraToMin(ElapTime(cHoraIni, cHoraFim))
 	Else
+		// Desconta o horário da pausa
 		nMinutos := U_HoraToMin(ElapTime(cHoraIni, cHoraFim))
-		nMinutos -= 90
+		nMinutos -= U_HoraToMin(ElapTime(cIniPausa, cFimPausa))
 	EndIf
 	
 Else
-	// Caso as datas sejam diferentes, deverá os dias cheios mais o dia incompleto
+	// Caso as datas sejam diferentes, deverá considerar os dias cheios mais o dia incompleto
 	// neste caso verificar a diferença dos horários subtraindo 90 minutos de almoco
 	
 	// Calcula tempo gasto no primeiro dia
-	nMinutos := U_HoraToMin(ElapTime(cHoraIni, "18:00:00"))
+	nMinutos := U_HoraToMin(ElapTime(cHoraIni, cFimExp))
 	If cHoraIni <= cIniPausa		
-		nMinutos -= 90 //Desconta horario de almoco
+		nMinutos -= U_HoraToMin(ElapTime(cIniPausa, cFimPausa)) //Desconta horario de pausa
 	EndIf
 	
 	// Calcula tempo gasto no ultimo dia
-	nMinutos += U_HoraToMin(ElapTime("08:00:00", cHoraFim))
-	If cHoraFim >= "13:30:00"
-		nMinutos -= 90
+	nMinutos += U_HoraToMin(ElapTime(cIniExp, cHoraFim))
+	If cHoraFim >= cFimPausa
+		nMinutos -= U_HoraToMin(ElapTime(cIniPausa, cFimPausa)) //Desconta horario de pausa
 	EndIf
 	
 	// Caso a diferença de datas tenha sido maior que um dia, calcula as horas dos 
-	// dias despendidos para a analise
-	nQtdDias := dDataFim - dDataIni
-	If nQtdDias > 1
-		nMinutos += (nQtdDias - 1) * 60 * 8.5
-	EndIf
+	// dias despendidos para a analise, desconsiderando finais de semana e feriados
+	nQtdDias := dDataFim - dDataIni - 1
+	
+	While nI < nQtdDias
+		If DataValida(dDataIni + nI, .T.) == dDataIni + nI				
+			nMinutos += 60 * 8.5
+		EndIf
+		nI++
+	EndDo
 EndIf
 
 Return nMinutos
@@ -97,77 +103,52 @@ Return nMin
 // #########################################################################################
 User function AcertaHR(dData, cHora, lTotvs)
 
+Local dDtValida
+
 Private cIniExp 	:= "08:00:00"
 Private cIniPausa 	:= "12:00:00"
 Private cFimPausa	:= "13:30:00"
 Private cFimExp		:= "18:00:00"
 
-// Primeiramente verificar através da função específica se a data é final de semana
-// ou feriado.
-//-------
+// Primeiramente verificar através da função específica se a data é final de semana ou feriado.
+// O cadastro de feriados é realizado pela SX5 - tabela 63. O sábodo é considerado de acordo com 
+// o parâmetro MV_SABFERI = S
 
-If lTotvs
-	// Se o analista inseriu uma interação fora do expediente, a interação
-	// é considerada como sendo no final do expediente, mesmo se foi feita no dia seguinte
-	// Se foi feita no dia seguinte, deverá retroceder a data
-	If cHora <= cIniExp .Or. cHora >= cFimExp
+dDtValida := DataValida(dData, !lTotvs)
+
+If dData != dDtValida
+	If lTotvs
+		dData := dDtValida
 		cHora := cFimExp
-		
-	// Se o analista inseriu a interação no horário de pausa, a interação
-	// é considerada como sendo no início da pausa
-	ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
-		cHora := cIniPausa
+	Else
+		dData := dDtValida
+		cHora := cIniExp
 	EndIf
 Else
-	// Se o cliente inseriu a interação fora do expediente, a interação
-	// é considerada como sendo no início do expediente
-	If cHora <= cIniExp .Or. cHora >= cFimExp
-		cHora := cIniExp
-	
-	// Se o cliente inseriu a interação no horário de pausa, a interação
-	// é considerada como sendo no final da pausa
-	ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
-		cHora := cFimPausa
+	If lTotvs
+		// Se o analista inseriu uma interação fora do expediente, a interação
+		// é considerada como sendo no final do expediente, mesmo se foi feita no dia seguinte
+		// Se foi feita no dia seguinte, deverá retroceder a data
+		If cHora <= cIniExp .Or. cHora >= cFimExp
+			cHora := cFimExp
+			
+		// Se o analista inseriu a interação no horário de pausa, a interação
+		// é considerada como sendo no início da pausa
+		ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
+			cHora := cIniPausa
+		EndIf
+	Else
+		// Se o cliente inseriu a interação fora do expediente, a interação
+		// é considerada como sendo no início do expediente
+		If cHora <= cIniExp .Or. cHora >= cFimExp
+			cHora := cIniExp
+		
+		// Se o cliente inseriu a interação no horário de pausa, a interação
+		// é considerada como sendo no final da pausa
+		ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
+			cHora := cFimPausa
+		EndIf
 	EndIf
 EndIf
 
-
-/*
-If AllTrim(cHoraIni) != "" .And. AllTrim(cHoraFim) != ""
-	// Verifica se as duas interações foram realizadas fora do horário comercial	
-	If cHoraIni <= cIniExp .And. cHoraFim <= cIniExp
-		cHoraIni := cIniExp
-		cHoraFim := cIniExp
-	EndIf
-	If cHoraIni >= cFimExp .And. cHoraFim >= cFimExp
-		cHoraIni := cFimExp
-		cHoraFim := cFimExp
-	EndIf
-	If cHoraIni >= cIniPausa .And. cHoraIni <= cFimPausa .And. cHoraFim >= cIniPausa .And. cHoraFim <= cFimPausa
-		cHoraIni := cFimPausa
-		cHoraFim := cFimPausa
-	EndIf 
-
-	// Verifica se a interação foi realizada fora do horário comercial
-	If cHoraIni <= cIniExp .Or. cHoraIni >= cFimExp
-		cHoraIni := cIniExp
-	EndIf 
-	
-	// Verifica se a interação foi realizada no horário de intervalo
-	If cHoraIni >= cIniPausa .And. cHoraIni <= cFimPausa
-		cHoraIni := cFimPausa
-	EndIf
-
-	// Verifica se a interação foi realizada fora do horário comercial
-	If cHoraFim <= cIniExp .Or. cHoraFim >= cFimExp
-		cHoraFim := cIniExp //antes estava parada2
-	EndIf 
-	
-	// Verifica se a interação foi realizada no horário de intervalo
-	If cHoraFim >= cIniPausa .And. cHoraFim <= cFimPausa
-		cHoraFim := cIniPausa
-	EndIf
-EndIf
-*/
-	
 Return NIL
