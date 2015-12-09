@@ -22,9 +22,9 @@ Local nMinutos := 0
 Local nQtdDias := 0
 Local nI := 1
 
-Private cIniExp 	:= "08:00:00"
+Private cIniExp 		:= "08:00:00"
 Private cIniPausa 	:= "12:00:00"
-Private cFimPausa	:= "13:30:00"
+Private cFimPausa		:= "13:30:00"
 Private cFimExp		:= "18:00:00"
 
 If dDataIni == dDataFim
@@ -58,7 +58,7 @@ Else
 	// dias despendidos para a analise, desconsiderando finais de semana e feriados
 	nQtdDias := dDataFim - dDataIni - 1
 	
-	While nI < nQtdDias
+	While nI <= nQtdDias
 		If DataValida(dDataIni + nI, .T.) == dDataIni + nI				
 			nMinutos += 60 * 8.5
 		EndIf
@@ -130,7 +130,16 @@ Else
 		// é considerada como sendo no final do expediente, mesmo se foi feita no dia seguinte
 		// Se foi feita no dia seguinte, deverá retroceder a data
 		If cHora <= cIniExp .Or. cHora >= cFimExp
-			cHora := cFimExp
+						
+			// Caso tenha feito a interação antes do horário de expediente, considera dia anterior
+			If cHora <= cIniExp
+				cHora := cIniExp
+				
+			// Caso tenha feito após o horário de expediente, considera como dia seguinte
+			ElseIf cHora >= cFimExp
+				dData := DataValida(dData + 1, .T.)
+				cHora := cIniExp
+			EndIf					
 			
 		// Se o analista inseriu a interação no horário de pausa, a interação
 		// é considerada como sendo no início da pausa
@@ -141,8 +150,17 @@ Else
 		// Se o cliente inseriu a interação fora do expediente, a interação
 		// é considerada como sendo no início do expediente
 		If cHora <= cIniExp .Or. cHora >= cFimExp
-			cHora := cIniExp
-		
+						
+			// Caso tenha feito a interação antes do horário de expediente, considera dia anterior
+			If cHora <= cIniExp
+				cHora := cIniExp
+				
+			// Caso tenha feito após o horário de expediente, considera como dia seguinte
+			ElseIf cHora >= cFimExp
+				dData := DataValida(dData + 1, .T.)
+				cHora := cIniExp
+			EndIf	
+			
 		// Se o cliente inseriu a interação no horário de pausa, a interação
 		// é considerada como sendo no final da pausa
 		ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
