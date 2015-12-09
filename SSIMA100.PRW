@@ -134,8 +134,8 @@ oView:AddGrid('VIEW_ZA1', oStruZA1, 'ZA1DETAIL')
 //oView:AddOtherObject('VIEW_ROD', {|oPanel| A050RODAPE(oPanel)})
 
 // Dividindo a tela
-oView:CreateHorizoltalBox('SUPERIOR', 58)
-oView:CreateHorizoltalBox('INFERIOR', 35)
+oView:CreateHorizoltalBox('SUPERIOR', 55)
+oView:CreateHorizoltalBox('INFERIOR', 45)
 //oView:CreateHorizontalBox('RODAPE',7)
 
 // Definindo a localização dos objetos
