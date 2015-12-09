@@ -117,13 +117,12 @@ Private cFimExp		:= "18:00:00"
 dDtValida := DataValida(dData, !lTotvs)
 
 If dData != dDtValida
-	If lTotvs
-		dData := dDtValida
+	If lTotvs		
 		cHora := cFimExp
-	Else
-		dData := dDtValida
+	Else		
 		cHora := cIniExp
 	EndIf
+	dData := dDtValida
 Else
 	If lTotvs
 		// Se o analista inseriu uma interação fora do expediente, a interação
@@ -144,7 +143,7 @@ Else
 		// Se o analista inseriu a interação no horário de pausa, a interação
 		// é considerada como sendo no início da pausa
 		ElseIf cHora >= cIniPausa .And. cHora <= cFimPausa
-			cHora := cIniPausa
+			cHora := cFimPausa
 		EndIf
 	Else
 		// Se o cliente inseriu a interação fora do expediente, a interação
