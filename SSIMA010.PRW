@@ -129,7 +129,7 @@ While !ZA0->(EOF())
 		EndDo
 	EndIf
 	
-	If nMinFX1 < 60 .And. nMinFX1 > 0
+	If nMinFX1 < 60
 		lCtrFX1 := .T.	
 	EndIf
 	
