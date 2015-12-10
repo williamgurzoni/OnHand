@@ -2,4 +2,6 @@
 
 User Function ESP1NOME()
 
-Return "On Hand"
+Local cModulo := "On Hand"
+
+Return cModulo
