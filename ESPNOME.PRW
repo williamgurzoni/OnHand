@@ -2,6 +2,6 @@
 
 User Function ESP1NOME()
 
-Local cModulo := "On Hand"
+Local cModulo := "SSIM On Hand"
 
 Return cModulo
